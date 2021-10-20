@@ -35,22 +35,25 @@ size=$(az vm show -g $Resource_Group -n $source_vm --query hardwareProfile.vmSiz
 NUMBER_DATADISKS=$(az vm show -d -g $Resource_Group -n $source_vm --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d' |wc -l)
 IDS_Data_Disks=$(az vm show -d -g $Resource_Group -n $source_vm --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d')
 OS_DISK_ID=$(az vm show -g $Resource_Group -n $source_vm --query storageProfile.osDisk.managedDisk.id | tr -d '"')
+OS_Disk_Type=$(az disk show --ids $OS_DISK_ID --query sku.name | tr -d '"')
+OS_Type=$(az vm show -g $Resource_Group -n $source_vm --query storageProfile.osDisk.osType | tr -d '"')
 
 az snapshot create -g $Resource_Group -n $snapshot_os --source $OS_DISK_ID > /dev/null 2>&1
 
 
 for current_vm in $new_vms
 do
-	az disk create --os-type windows -g $Resource_Group -n OS_disk_$current_vm --source $snapshot_os > /dev/null 2>&1
+	az disk create --os-type $OS_Type -g $Resource_Group -n OS_disk_$current_vm --sku $OS_Disk_Type --source $snapshot_os > /dev/null 2>&1
 	az vm create -g $Resource_Group -n $current_vm --public-ip-address "" --attach-os-disk OS_disk_$current_vm --subnet $subnet --nsg $nsg --size $size --os-type windows > /dev/null 2>&1
 	
 	if [ $NUMBER_DATADISKS > 0 ]
 	then 
 		for (( n=1; n<=$NUMBER_DATADISKS; n++ ))
 		do
-			ID_disk=$(echo $IDS_Data_Disks | awk -v n=$n '{print $n}')
-			az snapshot create -g $Resource_Group -n SnapShootDatadisc$n --source $ID_disk > /dev/null 2>&1
-			az disk create --os-type windows -g $Resource_Group -n data_disk_$current_vm-$n --source SnapShootDatadisc$n > /dev/null 2>&1
+			DATA_Disk_ID=$(echo $IDS_Data_Disks | awk -v n=$n '{print $n}')
+			DATA_Disk_Type=$(az disk show --ids $DATA_Disk_ID --query sku.name | tr -d '"')
+			az snapshot create -g $Resource_Group -n SnapShootDatadisc$n --source $DATA_Disk_ID > /dev/null 2>&1
+			az disk create --os-type $OS_Type -g $Resource_Group -n data_disk_$current_vm-$n --sku $DATA_Disk_Type --source SnapShootDatadisc$n > /dev/null 2>&1
 			az vm disk attach -g $Resource_Group --vm-name $current_vm -n data_disk_$current_vm-$n > /dev/null 2>&1
 		done			
 	az vm list -d -o table --query "[?name== '$current_vm']"
@@ -70,3 +73,4 @@ then
 	done	
 fi	
 echo "Done!"
+
