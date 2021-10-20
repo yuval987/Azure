@@ -44,7 +44,7 @@ az snapshot create -g $Resource_Group -n $snapshot_os --source $OS_DISK_ID > /de
 for current_vm in $new_vms
 do
 	az disk create --os-type $OS_Type -g $Resource_Group -n OS_disk_$current_vm --sku $OS_Disk_Type --source $snapshot_os > /dev/null 2>&1
-	az vm create -g $Resource_Group -n $current_vm --public-ip-address "" --attach-os-disk OS_disk_$current_vm --subnet $subnet --nsg $nsg --size $size --os-type windows > /dev/null 2>&1
+	az vm create -g $Resource_Group -n $current_vm --public-ip-address "" --attach-os-disk OS_disk_$current_vm --subnet $subnet --nsg $nsg --size $size --os-type $OS_Type > /dev/null 2>&1
 	
 	if [ $NUMBER_DATADISKS > 0 ]
 	then 
