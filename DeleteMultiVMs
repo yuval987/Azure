@@ -70,8 +70,7 @@ do
 		for (( n=1; n<=$NUMBER_DATADISKS; n++ ))
 		do
 			ID_disk=$(echo $IDS_Data_Disks | awk -v n=$n '{print $n}')
-			az disk delete --id $ID_disk --yes > /dev/null 2>&1
-			echo "Deleted data Disk $ID_disk" >> Info_VMS.txt
+			Run_Write "az disk delete --id $ID_disk --yes" "Deleted os disk $ID_disk"
 		done			
 	fi
 	
@@ -88,3 +87,4 @@ then
 else
 	exit
 fi
+
