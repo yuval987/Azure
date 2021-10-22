@@ -1,20 +1,20 @@
 #!bin/bash
 
 echo "Enter the name of vm source"
-read source_vm
+read Source_VM
 echo "Enter names of new VMS [use the space button to enter the next name of the new VM - example: VM1 VM2]"
-read new_vms
-Resource_Group=$(az vm list -d -o table --query "[?name== '$source_vm']" | awk 'NR==3 {print $NF}')
+read New_VMs
+Resource_Group=$(az vm list -d -o table --query "[?name== '$Source_VM']" | awk 'NR==3 {print $NF}')
 
 echo "Checking..."
 
-if [ "$(az vm list -d -o table --query "[?name=='$source_vm']")" == "" ];
+if [ "$(az vm list -d -o table --query "[?name=='$Source_VM']")" == "" ];
 	then
-		echo "VM $source_vm not exists"
+		echo "VM $Source_VM not exists"
 		exit
 	fi
 
-for current_vm in $new_vms
+for current_vm in $New_VMs
 do
 	if [ "$(az vm list -d -o table --query "[?name=='$current_vm']")" != "" ];
 	then
@@ -26,30 +26,30 @@ done
 
 echo "Starting.."
 
-snapshot_os=SnapShootOSdisk_$source_vm
+snapshot_os=SnapShootOSdisk_$Source_VM
 
-INTERFACE_ID=$(az vm show -g $Resource_Group -n $source_vm --query networkProfile.networkInterfaces[0].id |tr -d '"' ) 
-nsg=$(az network nic show --id $INTERFACE_ID --query networkSecurityGroup.id| tr -d '"')
-subnet=$(az network nic show --id $INTERFACE_ID --query ipConfigurations[0].subnet.id| tr -d '"')
-size=$(az vm show -g $Resource_Group -n $source_vm --query hardwareProfile.vmSize | tr -d '"' )
-NUMBER_DATADISKS=$(az vm show -d -g $Resource_Group -n $source_vm --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d' |wc -l)
-IDS_Data_Disks=$(az vm show -d -g $Resource_Group -n $source_vm --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d')
-OS_DISK_ID=$(az vm show -g $Resource_Group -n $source_vm --query storageProfile.osDisk.managedDisk.id | tr -d '"')
-OS_Disk_Type=$(az disk show --ids $OS_DISK_ID --query sku.name | tr -d '"')
-OS_Type=$(az vm show -g $Resource_Group -n $source_vm --query storageProfile.osDisk.osType | tr -d '"')
-Disk_GEN=$(az disk show --ids $OS_DISK_ID --query hyperVGeneration | tr -d '"')
+Interface_ID=$(az vm show -g $Resource_Group -n $Source_VM --query networkProfile.networkInterfaces[0].id |tr -d '"' ) 
+Nsg=$(az network nic show --id $Interface_ID --query networkSecurityGroup.id| tr -d '"')
+Subnet=$(az network nic show --id $Interface_ID --query ipConfigurations[0].Subnet.id| tr -d '"')
+Size=$(az vm show -g $Resource_Group -n $Source_VM --query hardwareProfile.vmSize | tr -d '"' )
+Number_Datadisk=$(az vm show -d -g $Resource_Group -n $Source_VM --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d' |wc -l)
+IDS_Data_Disks=$(az vm show -d -g $Resource_Group -n $Source_VM --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d')
+OS_Disk_ID=$(az vm show -g $Resource_Group -n $Source_VM --query storageProfile.osDisk.managedDisk.id | tr -d '"')
+OS_Disk_Type=$(az disk show --ids $OS_Disk_ID --query sku.name | tr -d '"')
+OS_Type=$(az vm show -g $Resource_Group -n $Source_VM --query storageProfile.osDisk.osType | tr -d '"')
+Disk_Gen=$(az disk show --ids $OS_Disk_ID --query hyperVGeneration | tr -d '"')
 
-az snapshot create -g $Resource_Group -n $snapshot_os --source $OS_DISK_ID > /dev/null 2>&1
+az snapshot create -g $Resource_Group -n $snapshot_os --source $OS_Disk_ID > /dev/null 2>&1
 
 
-for current_vm in $new_vms
+for current_vm in $New_VMs
 do
-	az disk create --os-type $OS_Type -g $Resource_Group -n OS_disk_$current_vm --sku $OS_Disk_Type --hyper-v-generation $Disk_GEN --source $snapshot_os > /dev/null 2>&1
-	az vm create -g $Resource_Group -n $current_vm --public-ip-address "" --attach-os-disk OS_disk_$current_vm --subnet $subnet --nsg $nsg --size $size --os-type $OS_Type > /dev/null 2>&1
+	az disk create --os-type $OS_Type -g $Resource_Group -n OS_disk_$current_vm --sku $OS_Disk_Type --hyper-v-generation $Disk_Gen --source $snapshot_os > /dev/null 2>&1
+	az vm create -g $Resource_Group -n $current_vm --public-ip-address "" --attach-os-disk OS_disk_$current_vm --Subnet $Subnet --Nsg $Nsg --Size $Size --os-type $OS_Type > /dev/null 2>&1
 	
-	if [ $NUMBER_DATADISKS > 0 ]
+	if [ $Number_Datadisk > 0 ]
 	then 
-		for (( n=1; n<=$NUMBER_DATADISKS; n++ ))
+		for (( n=1; n<=$Number_Datadisk; n++ ))
 		do
 			DATA_Disk_ID=$(echo $IDS_Data_Disks | awk -v n=$n '{print $n}')
 			DATA_Disk_Type=$(az disk show --ids $DATA_Disk_ID --query sku.name | tr -d '"')
@@ -66,11 +66,12 @@ echo "Removing SnapShots..."
 
 az snapshot delete -g $Resource_Group -n $snapshot_os > /dev/null 2>&1
 
-if [ $NUMBER_DATADISKS > 0 ]
+if [ $Number_Datadisk > 0 ]
 then 
-	for (( n=1; n<=$NUMBER_DATADISKS; n++ ))
+	for (( n=1; n<=$Number_Datadisk; n++ ))
 	do
 		az snapshot delete -g $Resource_Group -n SnapShootDatadisk$n > /dev/null 2>&1
 	done	
 fi	
 echo "Done!"
+
