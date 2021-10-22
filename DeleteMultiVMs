@@ -4,13 +4,13 @@ Run_Write() {
 	cmd=$1
 	msg=$2
 	$cmd > /dev/null 2>&1
-	retval=$?
-	if [ $retval -ne 0 ]
+	Retval=$?
+	if [ $Retval -ne 0 ]
 	then
-		msg="faild to :"$msg
+		msg="Faild to :"$msg
 		echo $msg >> Info_VMS.txt
 	else
-		msg="success to: "$msg 
+		msg="Success to: "$msg 
 		echo $msg >> Info_VMS.txt
   fi
 }
@@ -18,56 +18,56 @@ Run_Write() {
 echo "Delete a multi VMs with all the parts"
 sleep 2
 echo "enter a Resource Group:"
-read RESOURCE_GROUP
-Check_Exists_RG=$(az group exists -n $RESOURCE_GROUP)
-retval="$?"
-if [ "$Check_Exists_RG" = "false" ] || [ "$retval" -ne 0 ]
+read Resource_Group
+Check_Exists_RG=$(az group exists -n $Resource_Group)
+Retval="$?"
+if [ "$Check_Exists_RG" = "false" ] || [ "$Retval" -ne 0 ]
 then
-	echo "Resource Group $RESOURCE_GROUP not exists"
+	echo "Resource Group $Resource_Group not exists"
 	exit
 fi
 echo "enter the VM names that you would like to remove: [use the space button to enter the next name of the new VM - example: VM1 VM2]"
-read VMS_NAME
-Count_VMS=$(echo $VMS_NAME | wc -w)
+read VMs_Name
+Count_VMs=$(echo $VMs_Name | wc -w)
 echo "checking....."
-for current_vm in $VMS_NAME
+for Current_VM in $VMs_Name
 do
-	if [ "$(az vm list -d -o table --query "[?name=='$current_vm']")" = "" ];
+	if [ "$(az vm list -d -o table --query "[?name=='$Current_VM']")" = "" ];
 	then
-		echo "VM $current_vm not exists"
+		echo "VM $Current_VM not exists"
 		exit
 	fi
-	az vm show -g $RESOURCE_GROUP -n $current_vm > /dev/null 2>&1
-	retval="$?"
-	if [ "$retval" -ne 0 ]
+	az vm show -g $Resource_Group -n $Current_VM > /dev/null 2>&1
+	Retval="$?"
+	if [ "$Retval" -ne 0 ]
 	then
-		echo "$current_vm not exists in $RESOURCE_GROUP"
+		echo "$Current_VM not exists in $Resource_Group"
 		exit
 	fi
 done
 echo "Report:" > Info_VMS.txt
 echo "starting to delete..."
-for current_vm in $VMS_NAME
+for Current_VM in $VMs_Name
 do
-	echo "VM name: $current_vm" >> Info_VMS.txt
-	INTERFACE_ID=$(az vm show -g $RESOURCE_GROUP -n $current_vm --query networkProfile.networkInterfaces[0].id |tr -d '"' ) 
-	OS_DISK_ID=$(az vm show -g $RESOURCE_GROUP -n $current_vm --query storageProfile.osDisk.managedDisk.id | tr -d '"')
-	SECURITY_GROUP_ID=$(az network nic show --id $INTERFACE_ID --query networkSecurityGroup.id | tr -d '"') 
-	PUBLIC_IP_ID=$(az network nic show --id $INTERFACE_ID --query ipConfigurations[0].publicIpAddress.id | tr -d '"'}) 
-	NUMBER_DATADISKS=$(az vm show -d -g $RESOURCE_GROUP -n $current_vm --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d' |wc -l) 
-	IDS_Data_Disks=$(az vm show -d -g $RESOURCE_GROUP -n $current_vm --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d') 
+	echo "VM name: $Current_VM" >> Info_VMS.txt
+	Interface_ID=$(az vm show -g $Resource_Group -n $Current_VM --query networkProfile.networkInterfaces[0].id |tr -d '"' ) 
+	OS_Disk_ID=$(az vm show -g $Resource_Group -n $Current_VM --query storageProfile.osDisk.managedDisk.id | tr -d '"')
+	Security_Group_ID=$(az network nic show --id $Interface_ID --query networkSecurityGroup.id | tr -d '"') 
+	Public_IP_ID=$(az network nic show --id $Interface_ID --query ipConfigurations[0].publicIpAddress.id | tr -d '"'}) 
+	Number_DataDisks=$(az vm show -d -g $Resource_Group -n $Current_VM --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d' |wc -l) 
+	IDS_Data_Disks=$(az vm show -d -g $Resource_Group -n $Current_VM --query "storageProfile.dataDisks[].managedDisk.id" |  tr -d '[,],"' |sed '/^[[:space:]]*$/d') 
 
 	
-	Run_Write "az vm delete -g $RESOURCE_GROUP -n $current_vm --yes" "Deleted vm"
-	Run_Write "az network nic delete --id $INTERFACE_ID" "Deleted network interface: $INTERFACE_ID"
-	Run_Write "az disk delete --id $OS_DISK_ID --yes" "Deleted os disk: $OS_DISK_ID"
-	Run_Write "az network public-ip delete --id $PUBLIC_IP_ID" "Deleted public ip: $PUBLIC_IP_ID"
-	Run_Write "az network nsg delete --id $SECURITY_GROUP_ID" "Deleted network security group: $SECURITY_GROUP_ID"
+	Run_Write "az vm delete -g $Resource_Group -n $Current_VM --yes" "deleted vm"
+	Run_Write "az network nic delete --id $Interface_ID" "deleted network interface: $Interface_ID"
+	Run_Write "az disk delete --id $OS_Disk_ID --yes" "deleted os disk: $OS_Disk_ID"
+	Run_Write "az network public-ip delete --id $Public_IP_ID" "deleted public ip: $Public_IP_ID"
+	Run_Write "az network nsg delete --id $Security_Group_ID" "deleted network security group: $Security_Group_ID"
 	
 
-	if [ $NUMBER_DATADISKS > 0 ]
+	if [ $Number_DataDisks > 0 ]
 	then 
-		for (( n=1; n<=$NUMBER_DATADISKS; n++ ))
+		for (( n=1; n<=$Number_DataDisks; n++ ))
 		do
 			ID_disk=$(echo $IDS_Data_Disks | awk -v n=$n '{print $n}')
 			Run_Write "az disk delete --id $ID_disk --yes" "Deleted os disk $ID_disk"
@@ -75,16 +75,15 @@ do
 	fi
 	
 	echo "----------------------------------------------------------" >> Info_VMS.txt
-	echo "Deleting VM $current_vm is completed"
+	echo "Deleting VM $Current_VM is completed"
 
 done
 echo "The process is completed"
 echo "Do you want to get a report of the process? (y/n)"
-read answer
-if [ $answer = 'y' ]
+read Answer
+if [ $Answer = 'y' ]
 then
 	cat Info_VMS.txt
 else
 	exit
 fi
-
